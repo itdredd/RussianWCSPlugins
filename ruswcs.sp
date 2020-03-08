@@ -108,8 +108,8 @@ public Action Command_WcsGiveAway(int client, int args)
 			WCS_GiveLBlvl(iClient, 5);
 			
 			CGOPrintToChat(iClient, "{GREEN}[RUSSIAN WCS] {default}%t", "WcsGiveAway", client);
-
-			LogToFile("logs/bonus.log","Игрок - %L получил 5 уровней от %L.", iClient, client);
+			LogAction(iClient, -1, "Player %L received 5 lvls from %L", iClient, client);
+			//LogToFile("logs/bonus.log","Игрок - %L получил 5 уровней от %L.", iClient, client);
 		}
 	}
 	else {
@@ -183,7 +183,8 @@ public Action Command_WcsBonus(int client, int args) {
 				SetClientCookie(client, bCookie, buffer);
 				
 				CGOPrintToChat(client, "{GREEN}[RUSSIAN WCS] {DEFAULT}%t", "WcsGetBonus", i);
-				LogToFile("logs/bonus.log","Игрок - %L получил 40 уровней за достижение %i уровня.", client, i);
+				LogAction(client, -1, "Player %L received 40 lvls for to achieved %i lvls.", client, i);
+				//LogToFile("logs/bonus.log","Игрок - %L получил 40 уровней за достижение %i уровня.", client, i);
 			}
 			else if (reply < i){
 				CGOPrintToChat(client, "{GREEN}[RUSSIAN WCS] {DEFAULT}%t", "WcsNoAccessBonus", i);
@@ -216,7 +217,8 @@ public Action Command_WcsBonus(int client, int args) {
 				SetClientCookie(client, bCookie, buffer);
 				
 				CGOPrintToChat(client, "{GREEN}[RUSSIAN WCS] {DEFAULT}%t", "WcsGetBonus", i);
-				LogToFile("logs/bonus.log","Игрок - %L получил 40 уровней за достижение %i уровня.", client, i);
+				LogAction(client, -1, "Player %L received 40 lvls for to achieved %i lvls.", client, i);
+				//LogToFile("logs/bonus.log","Игрок - %L получил 40 уровней за достижение %i уровня.", client, i);
 			}
 			else if (reply < i){
 				CGOPrintToChat(client, "{GREEN}[RUSSIAN WCS] {DEFAULT}%t", "WcsNoAccessBonus", i);
@@ -266,10 +268,10 @@ public Action WcsInfo(int client){
 		CGOPrintToChat(client, "«{GREEN}/viptest{DEFAULT}» — получение временной vip-группы для тестирования.");
 		CGOPrintToChat(client, "«{GREEN}/cr{DEFAULT}» — команда для быстрой смены расы.");
 		CGOPrintToChat(client, "«{GREEN}/ri{DEFAULT}» — команда для получения информации о расе.");
+		CGOPrintToChat(client, "«{GREEN}/rr{DEFAULT}» — команда для выбора случайной расы.");
 		PrintToChat(client, "Бинды:");
 		PrintToChat(client, "«\x04bind v ultimate\x01» — бинд на способность.");
 		PrintToChat(client, "«\x04bind x ability\x01» — бинд на вторую способность («тотем»).");
-		
 		return Plugin_Continue;	
 }
 
