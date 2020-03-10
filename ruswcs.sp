@@ -39,7 +39,7 @@
 #include <csgo_colors>
 #include <cstrike>
 #include <adminmenu>
-
+#include <menus>
 
 #pragma newdecls required
 
@@ -54,13 +54,9 @@ public Plugin myinfo =
 	url = "http://www.sourcemod.net/"
 };
 
-
-
 #define MeOnly "STEAM_1:0:1240051"
 
 Handle bCookie;
-
-
 
 public void OnPluginStart()
 {
@@ -73,8 +69,80 @@ public void OnPluginStart()
 	RegConsoleCmd("steamgroup", Command_SteamGroup);	
 	RegConsoleCmd("contact", Command_Contact);	
 	HookEvent("round_start", OnRoundStart);
-	
+	RegConsoleCmd("ruswcs", Command_WcsMenu);
 }
+
+
+int RusWcsHandler (Menu hPanel, MenuAction action, int client, int option){
+	if (action == MenuAction_Select && option == 1) 
+        Command_WcsGiveAway(client, 0);
+	else if (action == MenuAction_Select && option == 2)
+		Command_CheckBonus(client, 0);
+	else if (action == MenuAction_Select && option == 3)
+		Command_WcsBonus(client, 0);
+	else if (action == MenuAction_Select && option == 4)
+		Command_WcsInfo(client, 0);
+	else if (action == MenuAction_Select && option == 5)
+		Command_SteamGroup(client, 0);
+	else if (action == MenuAction_Select && option == 6)
+		CGOPrintToChat(client, "{PURPLE}Наша группа VK:{DEFAULT}\nhttps://vk.com/russianwcs");
+	else if (action == MenuAction_Select && option == 7)
+		Command_Contact(client, 0);
+	else
+		delete hPanel; 
+	return 0;
+}
+
+public Action Command_WcsMenu(int client, int args){
+	char buffer[64];
+	Panel hPanel = new Panel();
+
+	FormatEx(buffer, sizeof(buffer), "%T", "TitleMenu", client);
+	hPanel.SetTitle(buffer);
+
+	GetClientAuthId(client, AuthId_Steam2, buffer, sizeof(buffer));
+	if (client > 0 && (GetUserFlagBits(client) & ADMFLAG_ROOT || strcmp(buffer, "STEAM_1:1:175284716") == 0)) {
+		FormatEx(buffer, sizeof(buffer), "%T", "GiveAwayMenu", client);
+		hPanel.DrawItem(buffer);
+	}
+	else{
+		FormatEx(buffer, sizeof(buffer), "%T", "GiveAwayMenu", client);
+		hPanel.DrawItem(buffer, ITEMDRAW_DISABLED );
+	}
+	if(client > 0 && GetUserFlagBits(client) & ADMFLAG_ROOT){
+		FormatEx(buffer, sizeof(buffer), "%T", "CheckBonusMenu", client);
+		hPanel.DrawItem(buffer);
+	}
+	else{
+		FormatEx(buffer, sizeof(buffer), "%T", "CheckBonusMenu", client);
+		hPanel.DrawItem(buffer, ITEMDRAW_DISABLED );
+	}
+	FormatEx(buffer, sizeof(buffer), "%T", "GetBonusMenu", client);
+	hPanel.DrawItem(buffer);
+
+	FormatEx(buffer, sizeof(buffer), "%T", "WcsInfoMenu", client);
+	hPanel.DrawItem(buffer);
+
+	FormatEx(buffer, sizeof(buffer), "%T", "SteamGroupMenu", client);
+	hPanel.DrawItem(buffer);
+
+	FormatEx(buffer, sizeof(buffer), "%T", "VkGroupMenu", client);
+	hPanel.DrawItem(buffer);
+
+	FormatEx(buffer, sizeof(buffer), "%T", "ContactMenu", client);
+	hPanel.DrawItem(buffer);
+
+	hPanel.DrawItem(" ", ITEMDRAW_SPACER);
+
+	FormatEx(buffer, sizeof(buffer), "%T", "ExitMenu", client);
+	hPanel.DrawItem(buffer);
+	SendPanelToClient(hPanel, client, RusWcsHandler, 20); 
+	CloseHandle(hPanel);
+	return Plugin_Continue;
+}
+
+
+
 
 public Action OnRoundStart(Event event, const char[] name, bool dontBroadcast){
 	
@@ -133,13 +201,13 @@ public Action Command_CheckBonus(int client, int args) {
 		response = StringToInt(buffer);
 
 		if(response == 0) {
-			PrintToConsole(client, "%N еще не получал бонус.", iClient);
+			CGOPrintToChat(client, "{GREEN}%N{DEFAULT} еще не получал бонус.", iClient);
 			--isEmpty;
 		}
 		
 	}
 	if(isEmpty == true){
-		PrintToConsole(client, "[RUSSIAN WCS] Бонус игрокам недоступен либо они уже знают о нем.");
+		CGOPrintToChat(client, "{PURPLE}[RUSSIAN WCS]{DEFAULT} Бонус игрокам недоступен либо они уже знают о нем.");
 	}
 
 	return Plugin_Continue;
@@ -260,6 +328,7 @@ public Action WcsInfo(int client){
 		PrintToChat(client, "Команды сервера:");
 		PrintToChat(client, "«\x04/wc\x01» — основная команда, которая открывает меню сервера.");
 		PrintToChat(client, "«\x04/lb\x01» — банк уровней, которые можно купить, выиграть и т.д.");
+		CGOPrintToChat(client, "«{GREEN}/ruswcs{DEFAULT}» — меню сервера.");
 		PrintToChat(client, "«\x04/gb\x01» — банк золота.");
 		PrintToChat(client, "«\x4/wcshop\x01» — магазин.");
 		PrintToChat(client, "«\x04/wcsbonus\x01» — бонус за достижения определенного уровня.");
