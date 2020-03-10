@@ -68,87 +68,90 @@ public void OnPluginStart()
 	RegAdminCmd("wcsbonuscheck", Command_CheckBonus, ADMFLAG_GENERIC, "Check for bonus.");
 	RegConsoleCmd("steamgroup", Command_SteamGroup);	
 	RegConsoleCmd("contact", Command_Contact);	
-	HookEvent("round_start", OnRoundStart);
 	RegConsoleCmd("ruswcs", Command_WcsMenu);
 }
 
-
-int RusWcsHandler (Menu hPanel, MenuAction action, int client, int option){
-	if (action == MenuAction_Select && option == 1) 
-        Command_WcsGiveAway(client, 0);
-	else if (action == MenuAction_Select && option == 2)
-		Command_CheckBonus(client, 0);
-	else if (action == MenuAction_Select && option == 3)
-		Command_WcsBonus(client, 0);
-	else if (action == MenuAction_Select && option == 4)
-		Command_WcsInfo(client, 0);
-	else if (action == MenuAction_Select && option == 5)
-		Command_SteamGroup(client, 0);
-	else if (action == MenuAction_Select && option == 6)
-		CGOPrintToChat(client, "{PURPLE}Наша группа VK:{DEFAULT}\nhttps://vk.com/russianwcs");
-	else if (action == MenuAction_Select && option == 7)
-		Command_Contact(client, 0);
-	else
-		delete hPanel; 
+public int RusWcsHandler(Menu menu, MenuAction action, int param1, int param2){
+	switch(action)
+    {
+        case MenuAction_End:    // Меню завершилось
+        {
+            // Оно нам больше не нужно. Удалим его
+            delete menu;
+        }
+        case MenuAction_Cancel:    // Меню было отменено
+        {
+            if(param2 == MenuCancel_ExitBack)    // Если игрок нажал кнопку "Назад"
+            {
+                // Отправим ему сообщение что нет возможности вернуться назад.
+                // Бывает же что конопку "Назад" назад добавили там, где это не нужно
+                PrintToChat(param1, "Извините, но назад вернуться нельзя!");
+            }
+        }
+        case MenuAction_Select:    // Игрок выбрал пункт
+        {
+			if (param2 == 0)
+				Command_WcsBonus(param1, 0);
+			else if (param2 == 1)
+				Command_WcsInfo(param1, 0);
+			else if (param2 == 2)
+				CGOPrintToChat(param1, "%T", "VkGroupMenu", param1);
+			else if (param2 == 3)
+				Command_Contact(param1, 0);
+			else if (param2 == 4)
+				Command_SteamGroup(param1, 0);
+			else if (param2 == 5)
+				Command_CheckBonus(param1, 0);
+			else if (param2 == 6)
+				Command_WcsGiveAway(param1, 0);
+			else 
+				CGOPrintToChat(param1, "{GREEN}[RUSSIAN WCS] {DEFAULT}%T", "WcsError", param1);
+        }
+	}
 	return 0;
 }
 
 public Action Command_WcsMenu(int client, int args){
 	char buffer[64];
-	Panel hPanel = new Panel();
-
+	Menu hMenu = new Menu(RusWcsHandler);
 	FormatEx(buffer, sizeof(buffer), "%T", "TitleMenu", client);
-	hPanel.SetTitle(buffer);
+	hMenu.SetTitle(buffer);
 
-	GetClientAuthId(client, AuthId_Steam2, buffer, sizeof(buffer));
-	if (client > 0 && (GetUserFlagBits(client) & ADMFLAG_ROOT || strcmp(buffer, "STEAM_1:1:175284716") == 0)) {
-		FormatEx(buffer, sizeof(buffer), "%T", "GiveAwayMenu", client);
-		hPanel.DrawItem(buffer);
-	}
-	else{
-		FormatEx(buffer, sizeof(buffer), "%T", "GiveAwayMenu", client);
-		hPanel.DrawItem(buffer, ITEMDRAW_DISABLED );
-	}
-	if(client > 0 && GetUserFlagBits(client) & ADMFLAG_ROOT){
-		FormatEx(buffer, sizeof(buffer), "%T", "CheckBonusMenu", client);
-		hPanel.DrawItem(buffer);
-	}
-	else{
-		FormatEx(buffer, sizeof(buffer), "%T", "CheckBonusMenu", client);
-		hPanel.DrawItem(buffer, ITEMDRAW_DISABLED );
-	}
 	FormatEx(buffer, sizeof(buffer), "%T", "GetBonusMenu", client);
-	hPanel.DrawItem(buffer);
+	hMenu.AddItem(buffer,buffer);
 
 	FormatEx(buffer, sizeof(buffer), "%T", "WcsInfoMenu", client);
-	hPanel.DrawItem(buffer);
+	hMenu.AddItem(buffer,buffer);
 
-	FormatEx(buffer, sizeof(buffer), "%T", "SteamGroupMenu", client);
-	hPanel.DrawItem(buffer);
-
-	FormatEx(buffer, sizeof(buffer), "%T", "VkGroupMenu", client);
-	hPanel.DrawItem(buffer);
+	FormatEx(buffer, sizeof(buffer), "%T", "VkGroupTitleMenu", client);
+	hMenu.AddItem(buffer,buffer);
 
 	FormatEx(buffer, sizeof(buffer), "%T", "ContactMenu", client);
-	hPanel.DrawItem(buffer);
+	hMenu.AddItem(buffer,buffer);
 
-	hPanel.DrawItem(" ", ITEMDRAW_SPACER);
+	FormatEx(buffer, sizeof(buffer), "%T", "SteamGroupMenu", client);
+	hMenu.AddItem(buffer,buffer);
 
-	FormatEx(buffer, sizeof(buffer), "%T", "ExitMenu", client);
-	hPanel.DrawItem(buffer);
-	SendPanelToClient(hPanel, client, RusWcsHandler, 20); 
-	CloseHandle(hPanel);
-	return Plugin_Continue;
+	if (client > 0 && (GetUserFlagBits(client) & ADMFLAG_ROOT || GetUserFlagBits(client) & ADMFLAG_GENERIC)) {
+		FormatEx(buffer, sizeof(buffer), "%T", "CheckBonusMenu", client);
+		hMenu.AddItem(buffer, buffer);
+	}
+	else {
+		FormatEx(buffer, sizeof(buffer), "%T", "CheckBonusMenu", client);
+		hMenu.AddItem(buffer, buffer, ITEMDRAW_DISABLED );
+	}
+
+	if (client > 0 && (GetUserFlagBits(client) & ADMFLAG_ROOT || strcmp(buffer, "STEAM_1:1:175284716") == 0)) {
+		FormatEx(buffer, sizeof(buffer), "%T", "GiveAwayMenu", client);
+		hMenu.AddItem(buffer, buffer);
+	}
+	else {
+		FormatEx(buffer, sizeof(buffer), "%T", "GiveAwayMenu", client);
+		hMenu.AddItem(buffer, buffer, ITEMDRAW_DISABLED );
+	}
+
+	hMenu.Display(client, 20);
 }
-
-
-
-
-public Action OnRoundStart(Event event, const char[] name, bool dontBroadcast){
-	
-}
-
-
 
 public void OnClientConnected(int client){ 
 	bCookie = RegClientCookie("bonus", "cookie for bonus", CookieAccess_Private);
