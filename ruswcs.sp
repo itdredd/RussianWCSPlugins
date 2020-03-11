@@ -337,6 +337,7 @@ public Action WcsInfo(int client){
 		PrintToChat(client, "«\x04/wcsbonus\x01» — бонус за достижения определенного уровня.");
 		CGOPrintToChat(client, "«{GREEN}/steamgroup{DEFAULT}» — ссылку на группу, при активации тега которой, Вы будете получать на 10% больше опыта.");
 		CGOPrintToChat(client, "«{GREEN}/contact{DEFAULT}» — контакты администратора, у которого можно приобрести донат.");
+		CGOPrintToChat(client, "«{GREEN}/vk «сообщение»{DEFAULT}» — отправляет сообщение в беседу сервера.");
 		CGOPrintToChat(client, "«{GREEN}/viptest{DEFAULT}» — получение временной vip-группы для тестирования.");
 		CGOPrintToChat(client, "«{GREEN}/cr{DEFAULT}» — команда для быстрой смены расы.");
 		CGOPrintToChat(client, "«{GREEN}/ri{DEFAULT}» — команда для получения информации о расе.");
