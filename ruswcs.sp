@@ -95,15 +95,20 @@ public int RusWcsHandler(Menu menu, MenuAction action, int param1, int param2){
 			else if (param2 == 1)
 				Command_WcsInfo(param1, 0);
 			else if (param2 == 2)
-				CGOPrintToChat(param1, "%T", "VkGroupMenu", param1);
+				ClientCommand(param1, "wcs");
 			else if (param2 == 3)
-				Command_Contact(param1, 0);
+				CGOPrintToChat(param1, "%T", "VkGroupMenu", param1);
 			else if (param2 == 4)
-				Command_SteamGroup(param1, 0);
+				Command_Contact(param1, 0);
 			else if (param2 == 5)
-				Command_CheckBonus(param1, 0);
+				Command_SteamGroup(param1, 0);
 			else if (param2 == 6)
+				Command_CheckBonus(param1, 0);
+			else if(param2 == 7)
 				Command_WcsGiveAway(param1, 0);
+			else if(param2 == 8) {
+				GiveRandomVip(param1);
+			}
 			else 
 				CGOPrintToChat(param1, "{GREEN}[RUSSIAN WCS] {DEFAULT}%T", "WcsError", param1);
         }
@@ -121,6 +126,9 @@ public Action Command_WcsMenu(int client, int args){
 	hMenu.AddItem(buffer,buffer);
 
 	FormatEx(buffer, sizeof(buffer), "%T", "WcsInfoMenu", client);
+	hMenu.AddItem(buffer,buffer);
+
+	FormatEx(buffer, sizeof(buffer), "%T", "WcsMenuR", client);
 	hMenu.AddItem(buffer,buffer);
 
 	FormatEx(buffer, sizeof(buffer), "%T", "VkGroupTitleMenu", client);
@@ -150,7 +158,56 @@ public Action Command_WcsMenu(int client, int args){
 		hMenu.AddItem(buffer, buffer, ITEMDRAW_DISABLED );
 	}
 
+	if (client > 0 && GetUserFlagBits(client) & ADMFLAG_ROOT) {
+		FormatEx(buffer, sizeof(buffer), "%T", "GiveAwayVipMenu", client);
+		hMenu.AddItem(buffer, buffer);
+	}
+	else {
+		FormatEx(buffer, sizeof(buffer), "%T", "GiveAwayVipMenu", client);
+		hMenu.AddItem(buffer, buffer, ITEMDRAW_DISABLED );
+	}
+
 	hMenu.Display(client, 20);
+}
+
+int GetRandomClient(bool bot = false, bool alive = true) {
+	int team = 0, count = 0;
+	int [] players = new int [MaxClients];
+	for (int iClient = 1; iClient <= MaxClients; iClient++) {
+		if (IsClientInGame(iClient) && bot == IsFakeClient(iClient) && alive == IsPlayerAlive(iClient) && !(team > 0 && team != GetClientTeam(iClient)))
+			players[count++] = iClient;
+	}
+	return count > 0 ? players[GetRandomInt(0, count - 1)] : -1;
+}
+
+public Action GiveRandomVip(int owner){
+	char steamId[65];
+	char group[] = "vip_group_1";
+	int client = GetRandomClient();
+	PrintToConsole(owner, "[DEBUG]\nclient = %i", client);
+	int i = 0;
+	while (WCS_GetVip(client)) {
+		i++;
+		client = GetRandomClient();
+		if (i==MaxClients) {
+			CGOPrintToChat(owner, "{GREEN}[RUSSIAN WCS] {default}%T", "AllPlayersWithVip", owner);
+			break;
+		}
+			
+	}
+		
+	char name[32];
+
+	GetClientName(client, name, sizeof(name));
+
+	GetClientAuthId(client, AuthId_Steam2, steamId, sizeof(steamId));
+	PrintToConsole(owner, "[DEBUG]\nSteamId = %s", steamId);
+	WCS_GiveVIP(steamId, name, group,120);
+	if (!WCS_GetVip(client))
+		return Plugin_Handled;
+	LogAction(owner, client, "%L give random vip to %L", owner, client);
+
+	return Plugin_Continue;
 }
 
 public void OnClientConnected(int client){ 
@@ -337,7 +394,7 @@ public Action WcsInfo(int client){
 		PrintToChat(client, "«\x04/wcsbonus\x01» — бонус за достижения определенного уровня.");
 		CGOPrintToChat(client, "«{GREEN}/steamgroup{DEFAULT}» — ссылку на группу, при активации тега которой, Вы будете получать на 10% больше опыта.");
 		CGOPrintToChat(client, "«{GREEN}/contact{DEFAULT}» — контакты администратора, у которого можно приобрести донат.");
-		CGOPrintToChat(client, "«{GREEN}/vk «сообщение»{DEFAULT}» — отправляет сообщение в беседу сервера.");
+		CGOPrintToChat(client, "«{GREEN}/vk *сообщение*{DEFAULT}» — отправляет сообщение в беседу сервера.");
 		CGOPrintToChat(client, "«{GREEN}/viptest{DEFAULT}» — получение временной vip-группы для тестирования.");
 		CGOPrintToChat(client, "«{GREEN}/cr{DEFAULT}» — команда для быстрой смены расы.");
 		CGOPrintToChat(client, "«{GREEN}/ri{DEFAULT}» — команда для получения информации о расе.");
