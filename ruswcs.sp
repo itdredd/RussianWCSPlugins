@@ -103,10 +103,12 @@ public int RusWcsHandler(Menu menu, MenuAction action, int param1, int param2){
 			else if (param2 == 5)
 				Command_SteamGroup(param1, 0);
 			else if (param2 == 6)
+				ClientCommand(param1, "sm_rules");
+			else if (param2 == 7)
 				Command_CheckBonus(param1, 0);
-			else if(param2 == 7)
+			else if(param2 == 8)
 				Command_WcsGiveAway(param1, 0);
-			else if(param2 == 8) {
+			else if(param2 == 9) {
 				GiveRandomVip(param1);
 			}
 			else 
@@ -138,6 +140,9 @@ public Action Command_WcsMenu(int client, int args){
 	hMenu.AddItem(buffer,buffer);
 
 	FormatEx(buffer, sizeof(buffer), "%T", "SteamGroupMenu", client);
+	hMenu.AddItem(buffer,buffer);
+
+	FormatEx(buffer, sizeof(buffer), "%T", "RulesMenu", client);
 	hMenu.AddItem(buffer,buffer);
 
 	if (client > 0 && (GetUserFlagBits(client) & ADMFLAG_ROOT || GetUserFlagBits(client) & ADMFLAG_GENERIC)) {
@@ -201,10 +206,12 @@ public Action GiveRandomVip(int owner){
 	GetClientName(client, name, sizeof(name));
 
 	GetClientAuthId(client, AuthId_Steam2, steamId, sizeof(steamId));
-	PrintToConsole(owner, "[DEBUG]\nSteamId = %s", steamId);
+	//PrintToConsole(owner, "[DEBUG]\nSteamId = %s\nname = %s", steamId, name);
 	WCS_GiveVIP(steamId, name, group,120);
 	if (!WCS_GetVip(client))
 		return Plugin_Handled;
+	CGOPrintToChatAll("{GREEN}[RUSSIAN WCS] {purple}%N{default} выиграл VIP!", client, owner);
+	CGOPrintToChat(client, "{GREEN}[RUSSIAN WCS] {default} Вы получили VIP на 2 часа от администрации.", client);
 	LogAction(owner, client, "%L give random vip to %L", owner, client);
 
 	return Plugin_Continue;
