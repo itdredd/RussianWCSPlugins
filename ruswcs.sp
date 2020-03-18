@@ -112,7 +112,7 @@ public int RusWcsHandler(Menu menu, MenuAction action, int param1, int param2){
 				GiveRandomVip(param1);
 			}
 			else 
-				CGOPrintToChat(param1, "{GREEN}[RUSSIAN WCS] {DEFAULT}%T", "WcsError", param1);
+				CGOPrintToChat(param1, "{purple}[RUSSIAN WCS] {DEFAULT}%T", "WcsError", param1);
         }
 	}
 	return 0;
@@ -195,7 +195,7 @@ public Action GiveRandomVip(int owner){
 		i++;
 		client = GetRandomClient();
 		if (i==MaxClients) {
-			CGOPrintToChat(owner, "{GREEN}[RUSSIAN WCS] {default}%T", "AllPlayersWithVip", owner);
+			CGOPrintToChat(owner, "{purple}[RUSSIAN WCS] {default}%T", "AllPlayersWithVip", owner);
 			break;
 		}
 			
@@ -210,9 +210,10 @@ public Action GiveRandomVip(int owner){
 	WCS_GiveVIP(steamId, name, group,120);
 	if (!WCS_GetVip(client))
 		return Plugin_Handled;
-	CGOPrintToChatAll("{GREEN}[RUSSIAN WCS] {purple}%N{default} выиграл VIP!", client, owner);
-	CGOPrintToChat(client, "{GREEN}[RUSSIAN WCS] {default} Вы получили VIP на 2 часа от администрации.", client);
-	LogAction(owner, client, "%L give random vip to %L", owner, client);
+	CGOPrintToChatAll("{purple}[RUSSIAN WCS] {green}%N{default} выиграл VIP!", client, owner);
+	CGOPrintToChat(client, "{purple}[RUSSIAN WCS] {default} Вы получили VIP на 2 часа от администрации.", client);
+	//LogAction(owner, client, "%L give random vip to %L", owner, client);
+	LogToFileEx("logs/ruswcs.log","%L give random vip to %L", owner, client);
 
 	return Plugin_Continue;
 }
@@ -236,15 +237,15 @@ public Action Command_WcsGiveAway(int client, int args)
 				continue;
 			}
 			else if(client == iClient){
-				CGOPrintToChat(iClient, "{GREEN}[RUSSIAN WCS] {default}Вы поблагодарили игроков.");
+				CGOPrintToChat(iClient, "{purple}[RUSSIAN WCS] {default}Вы поблагодарили игроков.");
 				continue;
 			}
 			
 			WCS_GiveLBlvl(iClient, 5);
 			
-			CGOPrintToChat(iClient, "{GREEN}[RUSSIAN WCS] {default}%t", "WcsGiveAway", client);
-			LogAction(iClient, -1, "Player %L received 5 lvls from %L", iClient, client);
-			//LogToFile("logs/bonus.log","Игрок - %L получил 5 уровней от %L.", iClient, client);
+			CGOPrintToChat(iClient, "{purple}[RUSSIAN WCS] {default}%t", "WcsGiveAway", client);
+			//LogAction(iClient, -1, "Player %L received 5 lvls from %L", iClient, client);
+			LogToFileEx("logs/ruswcs.log","Player %L received 5 lvls from %L", iClient, client);
 		}
 	}
 	else {
@@ -317,12 +318,12 @@ public Action Command_WcsBonus(int client, int args) {
 				IntToString(lvl, buffer, sizeof(buffer));
 				SetClientCookie(client, bCookie, buffer);
 				
-				CGOPrintToChat(client, "{GREEN}[RUSSIAN WCS] {DEFAULT}%t", "WcsGetBonus", i);
-				LogAction(client, -1, "Player %L received 40 lvls for to achieved %i lvls.", client, i);
-				//LogToFile("logs/bonus.log","Игрок - %L получил 40 уровней за достижение %i уровня.", client, i);
+				CGOPrintToChat(client, "{purple}[RUSSIAN WCS] {DEFAULT}%t", "WcsGetBonus", i);
+				//LogAction(client, -1, "Player %L received 40 lvls for to achieved %i lvls.", client, i);
+				LogToFileEx("logs/ruswcs.log","Player %L received 40 lvls for to achieved %i lvls.", client, i);
 			}
 			else if (reply < i){
-				CGOPrintToChat(client, "{GREEN}[RUSSIAN WCS] {DEFAULT}%t", "WcsNoAccessBonus", i);
+				CGOPrintToChat(client, "{purple}[RUSSIAN WCS] {DEFAULT}%t", "WcsNoAccessBonus", i);
 				
 				lvl = WCS_GetLvl(client);
 				IntToString(lvl, buffer, sizeof(buffer));
@@ -330,7 +331,7 @@ public Action Command_WcsBonus(int client, int args) {
 				break;
 			}
 			else {
-				CGOPrintToChat(client, "{GREEN}[RUSSIAN WCS] {DEFAULT}%t", "WcsError");
+				CGOPrintToChat(client, "{purple}[RUSSIAN WCS] {DEFAULT}%t", "WcsError");
 				break;
 			}
 		}
@@ -351,12 +352,12 @@ public Action Command_WcsBonus(int client, int args) {
 				IntToString(lvl, buffer, sizeof(buffer));
 				SetClientCookie(client, bCookie, buffer);
 				
-				CGOPrintToChat(client, "{GREEN}[RUSSIAN WCS] {DEFAULT}%t", "WcsGetBonus", i);
-				LogAction(client, -1, "Player %L received 40 lvls for to achieved %i lvls.", client, i);
-				//LogToFile("logs/bonus.log","Игрок - %L получил 40 уровней за достижение %i уровня.", client, i);
+				CGOPrintToChat(client, "{purple}[RUSSIAN WCS] {DEFAULT}%t", "WcsGetBonus", i);
+				//LogAction(client, -1, "Player %L received 40 lvls for to achieved %i lvls.", client, i);
+				LogToFileEx("logs/ruswcs.log","Player %L received 40 lvls for to achieved %i lvls.", client, i);
 			}
 			else if (reply < i){
-				CGOPrintToChat(client, "{GREEN}[RUSSIAN WCS] {DEFAULT}%t", "WcsNoAccessBonus", i);
+				CGOPrintToChat(client, "{purple}[RUSSIAN WCS] {DEFAULT}%t", "WcsNoAccessBonus", i);
 				
 				lvl = WCS_GetLvl(client);
 				IntToString(lvl, buffer, sizeof(buffer));
@@ -368,13 +369,13 @@ public Action Command_WcsBonus(int client, int args) {
 				break;
 			}
 			else {
-				CGOPrintToChat(client, "{GREEN}[RUSSIAN WCS] {DEFAULT}%t", "WcsError");
+				CGOPrintToChat(client, "{purple}[RUSSIAN WCS] {DEFAULT}%t", "WcsError");
 				break;
 			}
 		}
 	}
 	else {
-		CGOPrintToChat(client, "{GREEN}[RUSSIAN WCS] {DEFAULT}%t", "WcsError");
+		CGOPrintToChat(client, "{purple}[RUSSIAN WCS] {DEFAULT}%t", "WcsError");
 	}
 	
 	return Plugin_Continue;
