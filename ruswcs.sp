@@ -40,6 +40,7 @@
 #include <cstrike>
 #include <adminmenu>
 #include <menus>
+#include <dbi>
 
 #pragma newdecls required
 
@@ -55,8 +56,7 @@ public Plugin myinfo =
 };
 
 #define MeOnly "STEAM_1:0:1240051"
-
-Handle bCookie;
+Database g_hDatabase;
 
 public void OnPluginStart()
 {
@@ -65,11 +65,151 @@ public void OnPluginStart()
 	RegConsoleCmd("wcsbonus", Command_WcsBonus);
 	RegConsoleCmd("wcsinfo", Command_WcsInfo);
 	RegConsoleCmd("wcsgiveaway", Command_WcsGiveAway);
+	RegAdminCmd("wcs_givevip", Command_WcsGiveVip, ADMFLAG_ROOT);
 	RegAdminCmd("wcsbonuscheck", Command_CheckBonus, ADMFLAG_GENERIC, "Check for bonus.");
 	RegConsoleCmd("steamgroup", Command_SteamGroup);	
 	RegConsoleCmd("contact", Command_Contact);	
 	RegConsoleCmd("ruswcs", Command_WcsMenu);
+	Database.Connect(ConnectCallBack, "ruswcs"); // sp_lessons Имя секции в databases.cfg
 }
+
+public void OnClientPostAdminCheck(int client){
+	if (IsClientInGame(client)) {
+	char szQuery[256], szAuth[32];
+
+	GetClientAuthId(client, AuthId_Steam2, szAuth, sizeof(szAuth));
+
+	FormatEx(szQuery, sizeof(szQuery), "INSERT INTO `players` (`steamId`) VALUES ('%s');", szAuth);
+	g_hDatabase.Query(SQL_PushSteamId_Callback, szQuery);
+	}
+}
+
+//SQL
+
+public Action PushDate(int client, int lvl, int type, int dbLvl) {
+	switch (type){
+		case 0:{
+			if(lvl < 1000){
+				CGOPrintToChat(client, "{purple}[RUSSIAN WCS] {DEFAULT}%t", "WcsNoAccessBonus", 1000);
+				return Plugin_Handled;
+			}
+			for (int i = 1000; i <= lvl; i+=1000){
+				WCS_GiveLBlvl(client, 40);
+				lvl = WCS_GetLvl(client);
+				CGOPrintToChat(client, "{purple}[RUSSIAN WCS] {DEFAULT}%t", "WcsGetBonus", i);
+				//LogAction(client, -1, "Player %L received 40 lvls for to achieved %i lvls.", client, i);
+				LogToFileEx("logs/ruswcs.log","Player %L received 40 lvls for to achieved %i lvls.", client, i);
+			}
+			char szQuery[256], szAuth[32];
+			GetClientAuthId(client, AuthId_Steam2, szAuth, sizeof(szAuth));
+			FormatEx(szQuery, sizeof(szQuery), "UPDATE `players` SET `bonus` = '%i' WHERE `steamId` =  '%s';", lvl, szAuth);
+			g_hDatabase.Query(SQL_Push_Callback, szQuery);
+			
+			return Plugin_Handled;
+		}
+		case 1:{
+			int startLvl = RoundToCeil(float(dbLvl/1000));
+
+			startLvl = (startLvl+1)*1000;
+
+			if(startLvl > lvl){
+				CGOPrintToChat(client, "{purple}[RUSSIAN WCS] {DEFAULT}%t", "WcsNoAccessBonus", startLvl);
+				return Plugin_Handled;
+			}
+			for (int i = startLvl; i <= lvl; i+=1000){
+				WCS_GiveLBlvl(client, 40);
+				lvl = WCS_GetLvl(client);
+				CGOPrintToChat(client, "{purple}[RUSSIAN WCS] {DEFAULT}%t", "WcsGetBonus", i);
+				//LogAction(client, -1, "Player %L received 40 lvls for to achieved %i lvls.", client, i);
+				LogToFileEx("logs/ruswcs.log","Player %L received 40 lvls for to achieved %i lvls.", client, i);
+			}
+			char szQuery[256], szAuth[32];
+			GetClientAuthId(client, AuthId_Steam2, szAuth, sizeof(szAuth));
+			FormatEx(szQuery, sizeof(szQuery), "UPDATE `players` SET `bonus` = '%i' WHERE `steamId` =  '%s';", lvl, szAuth);
+			g_hDatabase.Query(SQL_Push_Callback, szQuery);
+			return Plugin_Continue;
+		}
+	}
+	return Plugin_Continue;
+}
+
+public void SQL_PushSteamId_Callback(Database hDatabase, DBResultSet results, const char[] sError, any data) {
+	if(sError[0]) {
+	LogError("SQL_Callback_PushSteamId: %s", sError); // Выводим в лог
+	return; // Прекращаем выполнение ф-и
+	}
+}
+
+public void ConnectCallBack (Database hDB, const char[] szError, any data) // Пришел результат соединения
+{
+	if (hDB == null || szError[0]) {
+		SetFailState("Database failure: %s", szError); // Отключаем плагин
+		return;
+	}
+	g_hDatabase = hDB; // Присваиваем глобальной переменной соединения значение текущего соединения
+	CreateTables(); // Функция пока не реализована, но по имени, думаю, ясно что она делает
+}
+
+public void SQL_Check_Callback(Database hDatabase, DBResultSet results, const char[] sError, any data) {
+	DataPack dPack = view_as<DataPack>(data);
+	dPack.Reset();
+	int owner = dPack.ReadCell();
+	int client = dPack.ReadCell();
+	if(sError[0]) {
+		LogError("SQL_Check_Callback: %s", sError); // Выводим в лог
+		return; // Прекращаем выполнение ф-и
+	}
+	else if(results.IsFieldNull(0)) {
+		//PrintToServer("Done");
+		CGOPrintToChat(owner, "{GREEN}%N{DEFAULT} еще не получал бонус.", client);
+	}
+}
+
+public void SQL_Push_Callback(Database hDatabase, DBResultSet results, const char[] sError, any data) {
+	if(sError[0]) {
+	LogError("SQL_Callback_Push: %s", sError); // Выводим в лог
+	return; // Прекращаем выполнение ф-и
+	}
+}
+
+public void SQL_Create_Callback(Database hDatabase, DBResultSet results, const char[] sError, any data) {
+	if(sError[0]) {
+	LogError("SQL_Callback_Create: %s", sError); // Выводим в лог
+	return; // Прекращаем выполнение ф-и
+	}
+}
+
+public void SQL_Bonus_Callback(Database hDatabase, DBResultSet results, const char[] sError, any data) {
+	DataPack dPack = view_as<DataPack>(data);
+	dPack.Reset();
+	int lvl = dPack.ReadCell();
+	int client = dPack.ReadCell();
+	int dbLvl = results.FetchInt(0);
+
+	if(sError[0]) {
+		LogError("SQL_Callback_Bonus: %s", sError); // Выводим в лог
+		return; // Прекращаем выполнение ф-и
+	}
+	else if(results.IsFieldNull(0)) {
+		PushDate(lvl, client, 0, 0);
+	}
+	else if(!results.IsFieldNull(0)){
+		PushDate(lvl, client, 1, dbLvl);
+	}
+	else{
+		PrintToServer("%s", results);
+	}
+}
+
+public void CreateTables() {
+	char szQuery[256];
+	FormatEx(szQuery, sizeof(szQuery), "CREATE TABLE IF NOT EXISTS `players` (`steamId` TEXT UNIQUE, `bonus` INTEGER);");
+	g_hDatabase.Query(SQL_Create_Callback, szQuery);
+}
+
+
+
+//~SQL
 
 public int RusWcsHandler(Menu menu, MenuAction action, int param1, int param2){
 	switch(action)
@@ -109,7 +249,7 @@ public int RusWcsHandler(Menu menu, MenuAction action, int param1, int param2){
 			else if(param2 == 8)
 				Command_WcsGiveAway(param1, 0);
 			else if(param2 == 9) {
-				GiveRandomVip(param1);
+				Command_WcsGiveVip(param1, 0);
 			}
 			else 
 				CGOPrintToChat(param1, "{purple}[RUSSIAN WCS] {DEFAULT}%T", "WcsError", param1);
@@ -175,7 +315,7 @@ public Action Command_WcsMenu(int client, int args){
 	hMenu.Display(client, 20);
 }
 
-int GetRandomClient(bool bot = false, bool alive = true) {
+stock int GetRandomClient(bool bot = false, bool alive = true) {
 	int team = 0, count = 0;
 	int [] players = new int [MaxClients];
 	for (int iClient = 1; iClient <= MaxClients; iClient++) {
@@ -185,42 +325,124 @@ int GetRandomClient(bool bot = false, bool alive = true) {
 	return count > 0 ? players[GetRandomInt(0, count - 1)] : -1;
 }
 
-public Action GiveRandomVip(int owner){
-	char steamId[65];
+public Action Command_WcsGiveVip(int client, int args){
+
+	char steamID[64];
+	int [] vipPlayers = new int[MaxClients];
+	int counter = 0;
+
 	char group[] = "vip_group_1";
-	int client = GetRandomClient();
-	PrintToConsole(owner, "[DEBUG]\nclient = %i", client);
-	int i = 0;
-	while (WCS_GetVip(client)) {
-		i++;
-		client = GetRandomClient();
-		if (i==MaxClients) {
-			CGOPrintToChat(owner, "{purple}[RUSSIAN WCS] {default}%T", "AllPlayersWithVip", owner);
-			break;
-		}
-			
-	}
-		
-	char name[32];
 
-	GetClientName(client, name, sizeof(name));
-
-	GetClientAuthId(client, AuthId_Steam2, steamId, sizeof(steamId));
-	//PrintToConsole(owner, "[DEBUG]\nSteamId = %s\nname = %s", steamId, name);
-	WCS_GiveVIP(steamId, name, group,120);
-	if (!WCS_GetVip(client))
+	for (int iClient = 1; iClient <= MaxClients; iClient++){
+		if(counter == MaxClients) {
+		CGOPrintToChatAll("{purple}[RUSSIAN WCS] {default}%T", "AllPlayersWithVip", client);
 		return Plugin_Handled;
-	CGOPrintToChatAll("{purple}[RUSSIAN WCS] {green}%N{default} выиграл VIP!", client, owner);
-	CGOPrintToChat(client, "{purple}[RUSSIAN WCS] {default} Вы получили VIP на 2 часа от администрации.", client);
-	//LogAction(owner, client, "%L give random vip to %L", owner, client);
-	LogToFileEx("logs/ruswcs.log","%L give random vip to %L", owner, client);
+		}
+		else if (!IsClientInGame(iClient) || IsFakeClient(iClient) || !WCS_IsPlayerLoaded(iClient)) {
+			counter++;
+			continue;
+	 	}
+		else if(WCS_GetVip(iClient)){
+			vipPlayers[iClient] = iClient;
+			//PrintToChat(owner, "vip=%i", iClient);
+			counter++;
+		} 
+	}
 
-	return Plugin_Continue;
+	if(counter == MaxClients) {
+		CGOPrintToChatAll("{purple}[RUSSIAN WCS] {default}%T", "AllPlayersWithVip", client);
+		return Plugin_Handled;
+	}
+
+	int winner = GetRandomClient();
+
+	for (int i = 1; i <= counter; i++) {
+		if (winner == vipPlayers[i]){
+			winner = GetRandomClient();
+			i=1;
+		}
+		
+	}
+
+	if(!WCS_GetVip(winner)){
+		char name[32];
+
+		GetClientName(winner, name, sizeof(name));
+
+		GetClientAuthId(winner, AuthId_Steam2, steamID, sizeof(steamID));
+		//PrintToConsole(owner, "[DEBUG]\nsteamID = %s\nname = %s", steamID, name);
+		WCS_GiveVIP(steamID, name, group,120);
+		if (!WCS_GetVip(winner))
+			return Plugin_Handled;
+		CGOPrintToChatAll("{purple}[RUSSIAN WCS] {green}%N{default} выиграл VIP!", winner, client);
+		PrintCenterText(winner, "Вы получили VIP на 2 часа от администрации.", winner);
+		//LogAction(owner, client, "%L give random vip to %L", owner, client);
+		LogToFileEx("logs/ruswcs.log","%L give random vip to %L", client, winner);
+
+	}
+	else {
+		CGOPrintToChat(client, "{purple}[RUSSIAN WCS] {DEFAULT}%T", "WcsError", client);
+	}
+	return Plugin_Handled;
+
+
+
+	// char SteamID[65];
+	// int[] clients = new int[MaxClients];
+	// int vipPlayers;
+	// char group[] = "vip_group_1";
+
+	// for(int iClient = 1; iClient <= MaxClients; iClient++){
+	// 	clients[iClient] = GetRandomClient();
+
+	// 	for (int z = 1; z < iClient; z++){
+	// 		if(clients[z] == clients[iClient]) {
+	// 			clients[iClient] = GetRandomClient();
+	// 			PrintToConsole(owner, "%i", vipPlayers);
+	// 			z=1;
+	// 		}
+	// 		if(vipPlayers==MaxClients-1){
+	// 			PrintToChat(owner, "Done");
+	// 		}	
+	// 	}
+	// 	if (!IsClientInGame(clients[iClient]) || IsFakeClient(clients[iClient]) || !WCS_IsPlayerLoaded(clients[iClient])) {
+	// 		continue;
+	// 	}
+	// 	else if(WCS_GetVip(clients[iClient])){
+	// 		PrintToChat(owner, "vipplayer = %i", clients[iClient]);
+	// 		vipPlayers++;
+	// 		continue;
+	// 	}
+		
+			
+	// 	if(!WCS_GetVip(clients[iClient])){
+	// 		char name[32];
+
+	// 		GetClientName(clients[iClient], name, sizeof(name));
+
+	// 		GetClientAuthId(clients[iClient], AuthId_Steam2, steamId, sizeof(steamId));
+	// 		//PrintToConsole(owner, "[DEBUG]\nSteamId = %s\nname = %s", steamId, name);
+	// 		WCS_GiveVIP(steamId, name, group,120);
+	// 		if (!WCS_GetVip(clients[iClient]))
+	// 			return Plugin_Handled;
+	// 		CGOPrintToChatAll("{purple}[RUSSIAN WCS] {green}%N{default} выиграл VIP!", clients[iClient], owner);
+	// 		PrintCenterText(clients[iClient], "Вы получили VIP на 2 часа от администрации.", clients[iClient]);
+	// 		//LogAction(owner, client, "%L give random vip to %L", owner, client);
+	// 		LogToFileEx("logs/ruswcs.log","%L give random vip to %L", owner, clients[iClient]);
+	// 		break;
+
+
+	// 	}
+
+	// }
+
+	// if(vipPlayers == MaxClients)
+	// 		CGOPrintToChat(owner, "{purple}[RUSSIAN WCS] {default}%T", "AllPlayersWithVip", owner);
+
 }
 
 public void OnClientConnected(int client){ 
-	bCookie = RegClientCookie("bonus", "cookie for bonus", CookieAccess_Private);
-	
+
 	SetGlobalTransTarget(client);
 }
 
@@ -255,165 +477,69 @@ public Action Command_WcsGiveAway(int client, int args)
 }
 
 public Action Command_CheckBonus(int client, int args) {
-	char buffer[64];
-	bool isEmpty = true;
-	int response;
+	char szQuery[256], szAuth[32];
+	DataPack hPack = new DataPack();
+	hPack.WriteCell(client);
 
-	for (int iClient = 1; iClient <= MaxClients; iClient++) {
 
-		if ((WCS_IsPlayerLoaded(iClient) && WCS_GetLvl(iClient) <= 1000) || !IsClientInGame(iClient) || IsFakeClient(iClient) || !WCS_IsPlayerLoaded(iClient)) {
+	for (int iClient = 1; iClient <= MaxClients; iClient++){
+		if (!IsClientInGame(iClient) || IsFakeClient(iClient) || !WCS_IsPlayerLoaded(iClient)) {
 				continue;
 			}
-
-		GetClientCookie(iClient, bCookie, buffer, sizeof(buffer));
-		response = StringToInt(buffer);
-
-		if(response == 0) {
-			CGOPrintToChat(client, "{GREEN}%N{DEFAULT} еще не получал бонус.", iClient);
-			--isEmpty;
-		}
-		
-	}
-	if(isEmpty == true){
-		CGOPrintToChat(client, "{PURPLE}[RUSSIAN WCS]{DEFAULT} Бонус игрокам недоступен либо они уже знают о нем.");
+		hPack.WriteCell(iClient);
+		GetClientAuthId(iClient, AuthId_Steam2, szAuth, sizeof(szAuth));
+		FormatEx(szQuery, sizeof(szQuery), "SELECT `bonus` FROM `players` WHERE `steamId` = '%s';", szAuth);
+		g_hDatabase.Query(SQL_Check_Callback, szQuery, hPack);
 	}
 
 	return Plugin_Continue;
 }
 
 public Action Command_WcsBonus(int client, int args) {
-	
-	// char buffer[32];
-	// GetClientAuthId(client, AuthId_Steam2, buffer, 32);
-	// if (strcmp(buffer, MeOnly) != 0) {
-		// return Plugin_Handled;
-	// }
-	
-	
-	
-	char buffer[64];
-	float lvlF;
+	char szQuery[256], szAuth[32];
 	int lvl;
-	int reply;
+
+	lvl = WCS_GetLvl(client);
+	GetClientAuthId(client, AuthId_Steam2, szAuth, sizeof(szAuth));
+
+	FormatEx(szQuery, sizeof(szQuery), "SELECT `bonus` FROM `players` WHERE `steamId` = '%s';", szAuth);
+
+	DataPack hPack = new DataPack();
+	hPack.WriteCell(client);
+	hPack.WriteCell(lvl);
+
+	g_hDatabase.Query(SQL_Bonus_Callback, szQuery, hPack);
 	
 
-	
-	GetClientCookie(client, bCookie, buffer, sizeof(buffer));
-	reply = StringToInt(buffer);
-	PrintToConsole(client, "[DEBUG]");
-	PrintToConsole(client, "reply = %i", reply);
-	if (reply != 0) {
-		lvlF = float(reply);
-		lvlF /=1000;
-		reply = RoundToCeil(lvlF);
-		PrintToConsole(client, "RoundNextLvl = %i", reply);
-		for (int i = reply*1000; i < 50000; i+=1000) {
-			
-			reply = WCS_GetLvl(client);
-			if(reply >= i) {
-				WCS_GiveLBlvl(client, 40);
-				
-				lvl = WCS_GetLvl(client);
-				
-				IntToString(lvl, buffer, sizeof(buffer));
-				SetClientCookie(client, bCookie, buffer);
-				
-				CGOPrintToChat(client, "{purple}[RUSSIAN WCS] {DEFAULT}%t", "WcsGetBonus", i);
-				//LogAction(client, -1, "Player %L received 40 lvls for to achieved %i lvls.", client, i);
-				LogToFileEx("logs/ruswcs.log","Player %L received 40 lvls for to achieved %i lvls.", client, i);
-			}
-			else if (reply < i){
-				CGOPrintToChat(client, "{purple}[RUSSIAN WCS] {DEFAULT}%t", "WcsNoAccessBonus", i);
-				
-				lvl = WCS_GetLvl(client);
-				IntToString(lvl, buffer, sizeof(buffer));
-				SetClientCookie(client, bCookie, buffer);
-				break;
-			}
-			else {
-				CGOPrintToChat(client, "{purple}[RUSSIAN WCS] {DEFAULT}%t", "WcsError");
-				break;
-			}
-		}
-	}
-	else if(reply == 0) {
-		lvl = WCS_GetLvl(client);
-		IntToString(lvl, buffer, sizeof(buffer));
-		SetClientCookie(client, bCookie, buffer);
-		
-		for (int i = 1000; i < 50000; i+=1000) {
 
-			GetClientCookie(client, bCookie, buffer, sizeof(buffer));
-			reply = StringToInt(buffer);
-			if(reply >= i) {
-				WCS_GiveLBlvl(client, 40);
-				
-				lvl = WCS_GetLvl(client);
-				IntToString(lvl, buffer, sizeof(buffer));
-				SetClientCookie(client, bCookie, buffer);
-				
-				CGOPrintToChat(client, "{purple}[RUSSIAN WCS] {DEFAULT}%t", "WcsGetBonus", i);
-				//LogAction(client, -1, "Player %L received 40 lvls for to achieved %i lvls.", client, i);
-				LogToFileEx("logs/ruswcs.log","Player %L received 40 lvls for to achieved %i lvls.", client, i);
-			}
-			else if (reply < i){
-				CGOPrintToChat(client, "{purple}[RUSSIAN WCS] {DEFAULT}%t", "WcsNoAccessBonus", i);
-				
-				lvl = WCS_GetLvl(client);
-				IntToString(lvl, buffer, sizeof(buffer));
-				SetClientCookie(client, bCookie, buffer);
-				PrintToConsole(client, "reply = 0");
-				PrintToConsole(client, "reply < i");
-				PrintToConsole(client, "reply = %i", reply);
-				PrintToConsole(client, "i = %i", i);
-				break;
-			}
-			else {
-				CGOPrintToChat(client, "{purple}[RUSSIAN WCS] {DEFAULT}%t", "WcsError");
-				break;
-			}
-		}
-	}
-	else {
-		CGOPrintToChat(client, "{purple}[RUSSIAN WCS] {DEFAULT}%t", "WcsError");
-	}
-	
 	return Plugin_Continue;
 }
 
 public Action Command_WcsInfo(int client, int args)
 {
-	WcsInfo(client);
-	return Plugin_Continue;	
+	PrintToChat(client, " \x02Russian WCS \x01— это сервер, который строится на расах («уникальный персонаж со своими способностями»). ");
+	PrintToChat(client, "Каждая раса является уникальной, то есть имеет свои способности. ");
+	PrintToChat(client, "Цель игры заключается в прокачке рас для достижения более сильных.");
+	PrintToChat(client, "Команды сервера:");
+	CGOPrintToChat(client, "«{GREEN}/lk{DEFAULT}» — личный кабинет (донат меню).");
+	PrintToChat(client, "«\x04/wc\x01» — основная команда, которая открывает меню сервера.");
+	PrintToChat(client, "«\x04/lb\x01» — банк уровней, которые можно купить, выиграть и т.д.");
+	CGOPrintToChat(client, "«{GREEN}/ruswcs{DEFAULT}» — меню сервера.");
+	PrintToChat(client, "«\x04/gb\x01» — банк золота.");
+	PrintToChat(client, "«\x4/wcshop\x01» — магазин.");
+	PrintToChat(client, "«\x04/wcsbonus\x01» — бонус за достижения определенного уровня.");
+	CGOPrintToChat(client, "«{GREEN}/steamgroup{DEFAULT}» — ссылку на группу, при активации тега которой, Вы будете получать на 10% больше опыта.");
+	CGOPrintToChat(client, "«{GREEN}/contact{DEFAULT}» — контакты администратора, у которого можно приобрести донат.");
+	CGOPrintToChat(client, "«{GREEN}/vk *сообщение*{DEFAULT}» — отправляет сообщение в беседу сервера.");
+	CGOPrintToChat(client, "«{GREEN}/viptest{DEFAULT}» — получение временной vip-группы для тестирования.");
+	CGOPrintToChat(client, "«{GREEN}/cr{DEFAULT}» — команда для быстрой смены расы.");
+	CGOPrintToChat(client, "«{GREEN}/ri{DEFAULT}» — команда для получения информации о расе.");
+	CGOPrintToChat(client, "«{GREEN}/rr{DEFAULT}» — команда для выбора случайной расы.");
+	PrintToChat(client, "Бинды:");
+	PrintToChat(client, "«\x04bind v ultimate\x01» — бинд на способность.");
+	PrintToChat(client, "«\x04bind x ability\x01» — бинд на вторую способность («тотем»).");
+	return Plugin_Continue;
 }
-
-
-
-public Action WcsInfo(int client){
-		PrintToChat(client, " \x02Russian WCS \x01— это сервер, который строится на расах («уникальный персонаж со своими способностями»). ");
-		PrintToChat(client, "Каждая раса является уникальной, то есть имеет свои способности. ");
-		PrintToChat(client, "Цель игры заключается в прокачке рас для достижения более сильных.");
-		PrintToChat(client, "Команды сервера:");
-		PrintToChat(client, "«\x04/wc\x01» — основная команда, которая открывает меню сервера.");
-		PrintToChat(client, "«\x04/lb\x01» — банк уровней, которые можно купить, выиграть и т.д.");
-		CGOPrintToChat(client, "«{GREEN}/ruswcs{DEFAULT}» — меню сервера.");
-		PrintToChat(client, "«\x04/gb\x01» — банк золота.");
-		PrintToChat(client, "«\x4/wcshop\x01» — магазин.");
-		PrintToChat(client, "«\x04/wcsbonus\x01» — бонус за достижения определенного уровня.");
-		CGOPrintToChat(client, "«{GREEN}/steamgroup{DEFAULT}» — ссылку на группу, при активации тега которой, Вы будете получать на 10% больше опыта.");
-		CGOPrintToChat(client, "«{GREEN}/contact{DEFAULT}» — контакты администратора, у которого можно приобрести донат.");
-		CGOPrintToChat(client, "«{GREEN}/vk *сообщение*{DEFAULT}» — отправляет сообщение в беседу сервера.");
-		CGOPrintToChat(client, "«{GREEN}/viptest{DEFAULT}» — получение временной vip-группы для тестирования.");
-		CGOPrintToChat(client, "«{GREEN}/cr{DEFAULT}» — команда для быстрой смены расы.");
-		CGOPrintToChat(client, "«{GREEN}/ri{DEFAULT}» — команда для получения информации о расе.");
-		CGOPrintToChat(client, "«{GREEN}/rr{DEFAULT}» — команда для выбора случайной расы.");
-		PrintToChat(client, "Бинды:");
-		PrintToChat(client, "«\x04bind v ultimate\x01» — бинд на способность.");
-		PrintToChat(client, "«\x04bind x ability\x01» — бинд на вторую способность («тотем»).");
-		return Plugin_Continue;	
-}
-
-
 
 public Action Command_SteamGroup(int client, int args){
 	CGOPrintToChat(client, "Steam группа Russian WCS — {LIME}https://steamcommunity.com/groups/ruswcs");
